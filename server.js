@@ -5,40 +5,36 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
-// Test route
+// Health check
 app.get("/", (req, res) => {
   res.send("Instagram AI Bot is running!");
 });
 
-// Instagram webhook verification
+// Meta webhook verification
 app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
 
-  if (
-    mode === "subscribe" &&
-    token === process.env.VERIFY_TOKEN
-  ) {
+  if (mode === "subscribe" && token === process.env.VERIFY_TOKEN) {
     return res.status(200).send(challenge);
   }
 
-  res.sendStatus(403);
+  return res.sendStatus(403);
 });
 
-// Instagram webhook events
+// Receive Instagram messages
 app.post("/webhook", async (req, res) => {
   try {
     console.log("Instagram webhook received:");
     console.log(JSON.stringify(req.body, null, 2));
 
-    // Abhi sirf webhook receive kar rahe hain.
-    // Gemini + Instagram reply next step me connect karenge.
+    // AI reply logic will be connected here next.
 
-    res.sendStatus(200);
+    return res.sendStatus(200);
   } catch (error) {
     console.error(error);
-    res.sendStatus(500);
+    return res.sendStatus(500);
   }
 });
 
