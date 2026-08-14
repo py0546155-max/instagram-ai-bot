@@ -27,26 +27,62 @@ app.get("/webhook", (req, res) => {
   return res.sendStatus(403);
 });
 
-// Receive Instagram webhook
+// Receive Instagram messages
 app.post("/webhook", async (req, res) => {
   try {
     console.log("Instagram webhook received:");
     console.log(JSON.stringify(req.body, null, 2));
 
-    const message =
-      req.body?.entry?.[0]?.messaging?.[0]?.message?.text;
+    const event = req.body?.entry?.[0]?.messaging?.[0];
 
-    if (message) {
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: `You are a friendly Instagram DM assistant.
-Reply naturally and briefly to this message:
+    const messageText = event?.message?.text;
+    const senderId = event?.sender?.id;
 
-${message}`,
-      });
-
-      console.log("Gemini reply:", response.text);
+    // Ignore events that are not actual text messages
+    if (!messageText || !senderId) {
+      return res.sendStatus(200);
     }
+
+    console.log("Incoming message:", messageText);
+    console.log("Sender ID:", senderId);
+
+    // Ask Gemini
+    const result = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `You are a friendly Instagram DM assistant.
+Reply naturally, helpfully, and briefly.
+
+User message:
+${messageText}`,
+    });
+
+    const reply = result.text;
+
+    console.log("Gemini reply:", reply);
+
+    // Send reply back to Instagram
+    const response = await fetch(
+      `https://graph.instagram.com/v26.0/me/messages`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.INSTAGRAM_ACCESS_TOKEN}`,
+        },
+        body: JSON.stringify({
+          recipient: {
+            id: senderId,
+          },
+          message: {
+            text: reply,
+          },
+        }),
+      }
+    );
+
+    const responseData = await response.text();
+
+    console.log("Instagram send response:", response.status, responseData);
 
     return res.sendStatus(200);
   } catch (error) {
